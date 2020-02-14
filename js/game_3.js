@@ -304,8 +304,6 @@ function onClick() {
   if(!rectsIntersect(doctor, block_wall)){
     console.log('click');
   }
-
-
 }
 
 function play(delta) {
