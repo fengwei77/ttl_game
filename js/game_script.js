@@ -2,20 +2,23 @@ const show_debug = true;
 const dev_grid_line = 1;
 
 gsap.registerPlugin(gsap, MotionPathPlugin, EaselPlugin, PixiPlugin, TextPlugin, TweenMax, TimelineMax, Power2, Power0);
-let WIDTH = 1024;
+let WIDTH = 600;
 let HEIGHT = WIDTH * (10 / 16);
+let isometryPlane_distance_val = 200;
 let extend_height = 150;
-let germs_speed = 0.3;
-let germs_speed_base = 4;
+let germs_speed = 0.8;
+let germs_speed_base = 2;
+let germs_generate_speed = 50;
 let countdown = 30;
-let damage_ratio = 0.212;
+let damage_ratio = 0.012;
 let health_width = 300;
 let health_width_in = 300;
 let level = 3;
-let numberOfgerms_pop = 4;
+let numberOfgerms_pop = 10;
 let germs_origin_height = 1;
 let germs_origin_fade_in = 0.2;
-let germs_origin_fade_out = 1.2;
+let germs_origin_fade_out = 0.5;
+let block_wall_ratio = 0.78;
 let gameScene, bg_sprite, state, health, bg_container, germs_pop, all_obj_container, germs_no, germs_alive;  //基礎設定
 const germs_fade_out_set = 0.2;
 show_console('WIDTH =' + WIDTH);
@@ -85,13 +88,12 @@ timer.start();
 //細菌<
 let germs = [];
 // let germs_container = [];
-let germs_container = ['container', new Container, new Container, new Container, new Container, new Container];
+let germs_container = ['container', new Container, new Container, new Container, new Container];
 //>細菌
 
 //軌道線<
 const isometryPlane = [
   [new PIXI.Graphics(), new PIXI.Graphics()],
-  new PIXI.Graphics(),
   new PIXI.Graphics(),
   new PIXI.Graphics(),
   new PIXI.Graphics(),
@@ -105,8 +107,8 @@ isometryPlane[0][1].moveTo(0, HEIGHT / 2);
 isometryPlane[0][1].lineTo(WIDTH, HEIGHT / 2);
 app.stage.addChild(isometryPlane[0][0]);
 app.stage.addChild(isometryPlane[0][1]);
-const isometryPlane_distance = [0, -200, -100, 0, 100, 200];
-const isometryPlane_distance_to = [0, -500, -250, 0, 250, 500];
+const isometryPlane_distance = [0, -(isometryPlane_distance_val), -(isometryPlane_distance_val), (isometryPlane_distance_val), (isometryPlane_distance_val),];
+const isometryPlane_distance_to = [0, -(isometryPlane_distance_val), -(isometryPlane_distance_val), (isometryPlane_distance_val),  (isometryPlane_distance_val)];
 const point_arr = [];
 for (let i = 1; i < isometryPlane.length; i++) {
   isometryPlane[i].lineStyle(2, 0xffffff, dev_grid_line);
@@ -114,7 +116,7 @@ for (let i = 1; i < isometryPlane.length; i++) {
   isometryPlane[i].lineTo(WIDTH / 2 + (isometryPlane_distance_to[i]), HEIGHT + extend_height);
   app.stage.addChild(isometryPlane[i]);
 }
-const iso_path_array = [[], [], [], [], [], []];
+const iso_path_array = [[], [], [], [], []];
 const action_gsap = [];
 //>軌道線
 
@@ -141,15 +143,14 @@ let keys = [
   keyboard(90),
   keyboard(88),
   keyboard(67),
-  keyboard(86),
-  keyboard(66)
+  keyboard(86)
 ];
 //>增加按鈕
 
 // 遮擋區塊 -z50
 const block_wall = new PIXI.Graphics();
 block_wall.beginFill(0xFFFFFF, 0.5);
-block_wall.drawRect(0, 0, WIDTH, HEIGHT * 0.55);
+block_wall.drawRect(0, 0, WIDTH, HEIGHT * block_wall_ratio);
 block_wall.endFill();
 app.stage.addChild(block_wall);
 block_wall.zIndex = 50;
@@ -159,7 +160,6 @@ loader
   .add('germs_2', "images/b_2.png")
   .add('germs_3', "images/b_3.png")
   .add('germs_4', "images/b_4.png")
-  .add('germs_5', "images/b_5.png")
   .add('bg_sprite', "images/bg_blue.png")
   .load(setup);
 
@@ -167,7 +167,7 @@ loader
 function setup() {
   germs_no = 0;
   germs_alive = []; //細菌活著
-  germs_pop = ['5ways',[],[],[],[],[]];
+  germs_pop = ['5ways', [], [], [], []];
   gameScene = new Container;
   bg_container = new Container;
   all_obj_container = new Container;
@@ -206,8 +206,6 @@ function setup() {
   }
 
 
-
-
   //執行遊戲
   state = play;
   app.ticker.add(delta => gameLoop(delta));
@@ -243,23 +241,18 @@ function gameLoop(delta) {
   //更新遊戲場景:
   state(delta);
 }
-
+let run_create_germs = 0 ;
 function play(delta) {
-  // if(out_contain( germs_container[2], {x: 0, y: 0, width: WIDTH, height: HEIGHT + 200}) != undefined == health > 0 ){
-  //   show_console('health = ' + (health-=1));
-  // }
+  run_create_germs += delta;
   if (player_action) {
-    creatGerms();
+    if((run_create_germs%germs_generate_speed) < 1){
+      creatGerms();
+    }
   }
 
   removeGerms();
 
   add_key_action();
-
-
-  // germs_pop.forEach(function(_germs) {
-  //
-  // });
 
   timer.timerManager.update(app.ticker.elapsedMS); //倒數計時
 
@@ -267,10 +260,12 @@ function play(delta) {
 
 }
 
-function add_key_action(){
-  for(let k=1 ;k< 6 ;k++) {
+function add_key_action() {
+  for (let k = 1; k < germs_pop.length; k++) {
     keys[k].press = function () {
       for (let i = 0; i < germs_pop[k].length; i++) {
+        // germs_pop[k][i].interactive = false;
+        console.log( germs_pop[k][i].interactive );
         let aBox = germs_pop[k][i].getBounds();
         let bBox = block_wall.getBounds();
         let res = aBox.x + aBox.width > bBox.x &&
@@ -280,24 +275,52 @@ function add_key_action(){
         if (!res) {
           germs_pop[k][i].alpha = 0.2;
           germs_alive[germs_no] = false;
+          germs_pop[k][i].interactive = false;
+        } else {
+          health_width_in = health_width_in - damage * 0.5;
+          if (health_width_in > damage && countdown > 0) {
+            healthBar.outer.width = health_width_in;
+          } else {
+            healthBar.outer.width = 0;
+          }
         }
-        console.log(res);
+
+        console.log( germs_pop[k][i].interactive );
       }
     };
   }
 }
+
+
+
 //動作
 function addInteraction(obj) {
-  obj.interactive = true;
   obj.on('pointerdown', onClick);
+  // obj.on('tap', onClick);
 
 }
 
 //CLICK方法
 function onClick() {
-  if (!rectsIntersect(this, block_wall) && player_action) {
-    show_console(this._zIndex);
-  }
+      let aBox = this.getBounds();
+      let bBox = block_wall.getBounds();
+      let res = aBox.x + aBox.width > bBox.x &&
+        aBox.x < bBox.x + bBox.width &&
+        aBox.y + aBox.height > bBox.y &&
+        aBox.y < bBox.y + bBox.height;
+      if (!res) {
+        this.alpha = 0.2;
+        germs_alive[germs_no] = false;
+        this.interactive =false;
+      } else {
+        health_width_in = health_width_in - damage * 0.5;
+        if (health_width_in > damage && countdown > 0) {
+          healthBar.outer.width = health_width_in;
+        } else {
+          healthBar.outer.width = 0;
+        }
+      }
+      console.log(res);
 }
 
 //感應區塊
@@ -310,18 +333,16 @@ function rectsIntersect(a, b) {
     aBox.y < bBox.y + bBox.height;
 }
 
-let temp_r_i = 0;
 function creatGerms() {
   //set 敵人
   // show_console('creatGerms' + germs_pop.length);
   // console.log('germs_pop.length' + germs_pop.length);
-  let all_pop = germs_pop[1].length + germs_pop[2].length + germs_pop[3].length + germs_pop[4].length +germs_pop[5].length ;
+  let all_pop = germs_pop[1].length + germs_pop[2].length + germs_pop[3].length + germs_pop[4].length;
+
   let get_rand = get5WayArr(level)[getRandomInt(0,4)];
-  // console.log(get_rand);
-  for (let i = 0; i < numberOfgerms_pop - all_pop; i++) {
+  // for (let i = 0; i < numberOfgerms_pop - all_pop; i++) {
 //細菌<
     germs_no++;
-    // show_console( 'create_' + germs_no  );
     let _germs_container = [];
     let _germs = [
       'sprite'
@@ -329,11 +350,13 @@ function creatGerms() {
       , new Sprite(loader.resources["germs_2"].texture)
       , new Sprite(loader.resources["germs_3"].texture)
       , new Sprite(loader.resources["germs_4"].texture)
-      , new Sprite(loader.resources["germs_5"].texture)
     ];
     // let r_i = getRandomInt(1,5);
-    let r_i = get_rand[i];
-    console.log(r_i);
+    let r_i = get_rand[getRandomInt(0,3)];
+    // seq++;
+    // if(seq >= get_rand.length){
+    //   seq = 1;
+    // }
     _germs_container[r_i] = new Container;
     _germs[r_i].anchor.x = 0.5;
     _germs[r_i].anchor.y = 0.5;
@@ -342,32 +365,49 @@ function creatGerms() {
     // show_console('_germs[' + i + '].width-' + _germs[r_i].width);
     _germs[r_i].x = 0;
     _germs[r_i].y = 0;
+
     _germs_container[r_i].addChild(_germs[r_i]);
-    _germs_container[r_i].zIndex = i + 10;
-    _germs_container[r_i].x = (WIDTH - _germs_container[r_i].width) / 2 + (i * 10);
-    _germs_container[r_i].y = (HEIGHT - _germs_container[r_i].height) / 2 + (i * 10);
+    _germs_container[r_i].zIndex = germs_no%20 + 10;
+    // _germs_container[r_i].x = (WIDTH - _germs_container[r_i].width) / 2 ;
+    // _germs_container[r_i].y = (HEIGHT - _germs_container[r_i].height) / 2 ;
     // show_console('germs -' + i);
     //細菌加入動作
     _germs_container[r_i].position.copyFrom(iso_path_array[r_i][0]);
     _germs_container[r_i].pivot.set(0.5);
     _germs_container[r_i].scale.set(germs_origin_fade_in);
-    action_gsap[r_i] = gsap.to(_germs_container[r_i], {
-      pixi: {scale: germs_origin_fade_out},
-      duration: germs_speed * getRandomInt(1, 3) + germs_speed_base,
-      repeat: 1,
-      motionPath: {
-        path: iso_path_array[r_i]
-      },
-      ease: "slow(0.7, 0.7, false)"
-    });
-    _germs_container[r_i].alpha = 1;
-    console.log(_germs_container[r_i])
-    addInteraction(_germs_container[r_i]);
-     all_obj_container.addChild(_germs_container[r_i]);
-    germs_pop[r_i].push(_germs_container[r_i]);
-    all_pop = germs_pop[1].length + germs_pop[2].length + germs_pop[3].length + germs_pop[4].length +germs_pop[5].length ;
 
-  }
+    // action_gsap[r_i].pause();
+    // console.log(_germs_container[r_i].y);
+    //action_gsap[r_i].pause();
+    // var timeout = gsap.delayedCall(0.1, function() {
+    //   creatGerms();
+    // });
+
+    // gsap.delayedCall(1, function() {
+      action_gsap[r_i] = gsap.to(_germs_container[r_i], {
+        pixi: {scale: germs_origin_fade_out},
+        duration: germs_speed + germs_speed_base,
+        repeat: 1,
+        motionPath: {
+          path: iso_path_array[r_i]
+        },
+        ease: "power2.in",
+        onComplete:function(){
+        },
+        onUpdate: function() {
+        }
+      });
+    // });
+    _germs_container[r_i].alpha = 1;
+    _germs_container[r_i].interactive = true;
+    _germs_container[r_i].on('pointerdown', onClick);
+    // console.log(_germs_container[r_i])
+    // addInteraction(_germs_container[r_i]);
+    all_obj_container.addChild(_germs_container[r_i]);
+    germs_pop[r_i].push(_germs_container[r_i]);
+    all_pop = germs_pop[1].length + germs_pop[2].length + germs_pop[3].length + germs_pop[4].length ;
+
+  // }
 
 
 }
@@ -376,8 +416,8 @@ function removeGerms() {
   // show_console('removeGerms');
   // show_console('HEIGHT - ' + (HEIGHT + germs_origin_height));
   // console.log(all_obj_container.children.length );
-  for (let i = 0; i <  germs_pop.length; i++) {
-    for(let j = 0 ; j < germs_pop[i].length; j++) {
+  for (let i = 0; i < germs_pop.length; i++) {
+    for (let j = 0; j < germs_pop[i].length; j++) {
       if (germs_pop[i][j].y > (HEIGHT + 100)) {
         if (germs_pop[i][j].alpha > 0.95) {
           health_width_in = health_width_in - damage;
@@ -396,7 +436,7 @@ function removeGerms() {
       }
     }
   }
-  if(healthBar.outer.width  <= 0){
+  if (healthBar.outer.width <= 0) {
     gameScene.visible = false;
   }
 }
@@ -493,16 +533,16 @@ function wait(duration = 0) {
   });
 }
 
-function get5WayArr(lv){
-    let arr = [];
-    if(lv == 3){
-      arr = [
-        [2,3,4,1,5],
-        [1,2,3,4,5],
-        [4,5,3,2,1],
-        [2,3,4,5,1],
-        [3,4,1,5,2]
-      ];
-    }
+function get5WayArr(lv) {
+  let arr = [];
+  if (lv == 3) {
+    arr = [
+      [2, 3, 4, 1],
+      [1, 2, 3, 4],
+      [4, 1, 3, 2],
+      [2, 3, 4, 1],
+      [3, 4, 1, 2]
+    ];
+  }
   return arr;
 }
