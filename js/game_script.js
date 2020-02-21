@@ -22,6 +22,7 @@ let germs_origin_fade_in = 0.2;
 let germs_origin_fade_out = 1;
 let block_wall_ratio = 0.7;
 let gameScene, bg_sprite, state, health, bg_container, germs_pop, all_obj_container, germs_no, germs_alive;  //基礎設定
+let pause_btn, play_btn;
 const germs_fade_out_set = 0.2;
 show_console('WIDTH =' + WIDTH);
 show_console('HEIGHT =' + HEIGHT);
@@ -185,8 +186,11 @@ loader
   .add('bg_sprite', "images/bg_blue.png")
   .load(setup);
 
+//爆破
 //加入場景
 function setup() {
+
+
   germs_no = 0;
   germs_alive = []; //細菌活著
   germs_pop = ['5ways', [], [], [], []];
@@ -228,14 +232,24 @@ function setup() {
   }
 
 
-  // PIXI.sound.play("loop1",{loop: true});
+   const sound =  PIXI.sound.play("loop1",{loop: true});
+  sound.volume = 1;
+  // const sound = PIXI.sound.add('loop1',{loop:true});
+
   //執行遊戲
   state = play;
   let ticker = app.ticker.add(delta => gameLoop(delta));
   ticker.autoStart = false;
-  ticker.stop();
-
   ticker.start();
+ keyboard(27).press = function () {
+    ticker.stop();
+   sound.volume = 0;
+  };
+//  ticker.start();
+  keyboard(80).press = function () {
+    sound.volume = 1;
+    ticker.start();
+  };
   gameScene.visible = true;
 }
 
@@ -273,6 +287,7 @@ function add_key_action() {
   for (let k = 1; k < germs_pop.length; k++) {
     keys[k].press = function () {
       for (let i = 0; i < germs_pop[k].length; i++) {
+
         // germs_pop[k][i].interactive = false;
         // console.log(germs_pop[k][i].interactive);
         let aBox = germs_pop[k][i].getBounds();
@@ -282,6 +297,12 @@ function add_key_action() {
           aBox.y + aBox.height > bBox.y &&
           aBox.y < bBox.y + bBox.height;
         if (!res) {
+
+          germs_pop[k][i].children[1].alpha = 1;
+          gsap.to(  germs_pop[k][i].children[1], 0.5,{
+            pixi: {alpha:0}
+          });
+
           germs_pop[k][i].alpha = 0.2;
           germs_alive[germs_no] = false;
           // germs_pop[k][i].interactive = false;
@@ -309,12 +330,15 @@ function add_key_action() {
 //動作
 function addInteraction(obj) {
   obj.on('pointerdown', onClick);
-  // obj.on('tap', onClick);
 
 }
 
 //CLICK方法
 function onClick() {
+  this.children[1].alpha = 1;
+  gsap.to( this.children[1], 0.5,{
+    pixi: {alpha:0}
+  });
   let aBox = this.getBounds();
   let bBox = block_wall.getBounds();
   let res = aBox.x + aBox.width > bBox.x &&
@@ -396,6 +420,24 @@ function creatGerms() {
     }
   });
   // });
+  //效果
+  let animatedSprite;
+  let alienImages = ["images/dd1.png", "images/dd2.png"];
+  let textureArray = [];
+  for (let i=0; i < alienImages.length; i++)
+  {
+    let texture = PIXI.Texture.from(alienImages[i]);
+    textureArray.push(texture);
+  };
+  animatedSprite = new PIXI.AnimatedSprite(textureArray);
+  animatedSprite.anchor.x = 0.5;
+  animatedSprite.anchor.y = 0.5;
+  animatedSprite.width = animatedSprite.width * (WIDTH / bg_sprite.width) / 2;
+  animatedSprite.height = animatedSprite.height * (HEIGHT / bg_sprite.height) / 2;
+  animatedSprite.alpha = 0;
+  animatedSprite.play();
+  animatedSprite.interactive = false;
+  _germs_container[r_i].addChild(animatedSprite);
   _germs_container[r_i].alpha = 1;
   _germs_container[r_i].interactive = true;
   _germs_container[r_i].on('pointerdown', onClick);
